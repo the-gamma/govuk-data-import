@@ -1,0 +1,10 @@
+framework: >= net45
+redirects: on
+source https://www.nuget.org/api/v2
+
+nuget Microsoft.Azure.Common 2.1
+nuget Microsoft.WindowsAzure.Common 1.4.1
+nuget Microsoft.WindowsAzure.Management 4.1.1
+
+nuget MBrace.Azure 1.4.3
+nuget MBrace.Azure.Management 1.4.3

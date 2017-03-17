@@ -1,0 +1,176 @@
+REDIRECTS: ON
+FRAMEWORK: >= NET45
+NUGET
+  remote: https://www.nuget.org/api/v2
+    Argu (3.7)
+      FSharp.Core (>= 4.0.1.7-alpha) - framework: >= net463
+      NETStandard.Library (>= 1.6) - framework: >= net463
+      System.Xml.XDocument (>= 4.0.11) - framework: >= net463
+    FSharp.Core (4.1.0.2) - framework: >= net463
+      System.ValueTuple (>= 4.3)
+    FsPickler (2.1)
+    FsPickler.Json (2.1)
+      FsPickler (2.1)
+      Newtonsoft.Json (>= 6.0.5)
+    Hyak.Common (1.1)
+      Microsoft.Bcl (>= 1.1.9)
+      Microsoft.Bcl.Async (>= 1.0.168)
+      Microsoft.Bcl.Build (>= 1.0.14)
+      Microsoft.Net.Http (>= 2.2.22)
+      Newtonsoft.Json (>= 7.0.1)
+    MBrace.Azure (1.4.3)
+      Argu (>= 3.0 < 4.0)
+      MBrace.Core (>= 1.3 < 1.4)
+      MBrace.Runtime (>= 1.3 < 1.4)
+      System.Reflection.Metadata
+      WindowsAzure.ServiceBus (>= 3.0 < 4.0)
+      WindowsAzure.Storage (>= 7.0 < 8.0)
+    MBrace.Azure.Management (1.4.3)
+      MBrace.Azure (>= 1.4.3)
+      MBrace.Core (>= 1.3 < 1.4)
+      MBrace.Runtime (>= 1.3 < 1.4)
+      Microsoft.Bcl.Async (>= 1.0 < 2.0)
+      Microsoft.WindowsAzure.Management.Libraries (>= 2.0 < 3.0)
+      Microsoft.WindowsAzure.Management.ServiceBus (>= 0.18.0-prerelease < 1.0.0-prerelease)
+      WindowsAzure.ServiceBus (>= 3.0 < 4.0)
+      WindowsAzure.Storage (>= 7.0 < 8.0)
+    MBrace.Core (1.3.1)
+    MBrace.Runtime (1.3.1)
+      FsPickler (>= 2.1 < 2.2)
+      FsPickler.Json (>= 2.1 < 2.2)
+      MBrace.Core (1.3.1)
+      Vagabond (>= 0.13.1 < 0.14)
+    Microsoft.Azure.Common (2.1)
+      Hyak.Common (>= 1.0.2)
+      Microsoft.Azure.Common.Dependencies (>= 1.0)
+    Microsoft.Azure.Common.Dependencies (1.0)
+      Microsoft.Bcl (>= 1.1.9)
+      Microsoft.Bcl.Async (>= 1.0.168)
+      Microsoft.Bcl.Build (>= 1.0.14)
+      Microsoft.Net.Http (>= 2.2.22)
+      Newtonsoft.Json (>= 6.0.4)
+    Microsoft.Azure.KeyVault.Core (1.0)
+    Microsoft.Bcl (1.1.10)
+      Microsoft.Bcl.Build (>= 1.0.14)
+    Microsoft.Bcl.Async (1.0.168)
+      Microsoft.Bcl (>= 1.1.8)
+    Microsoft.Bcl.Build (1.0.21) - import_targets: false
+    Microsoft.Data.Edm (5.7)
+    Microsoft.Data.OData (5.7)
+      Microsoft.Data.Edm (5.7)
+      System.Spatial (5.7)
+    Microsoft.Data.Services.Client (5.7)
+      Microsoft.Data.OData (5.7)
+    Microsoft.Net.Http (2.2.29)
+      Microsoft.Bcl (>= 1.1.10)
+      Microsoft.Bcl.Build (>= 1.0.14)
+    Microsoft.Win32.Primitives (4.3) - framework: >= net463
+    Microsoft.WindowsAzure.Common (1.4.1)
+      Microsoft.WindowsAzure.Common.Dependencies (>= 1.1.1)
+    Microsoft.WindowsAzure.Common.Dependencies (1.1.1)
+      Microsoft.Bcl (>= 1.1.9)
+      Microsoft.Bcl.Async (>= 1.0.168)
+      Microsoft.Bcl.Build (>= 1.0.14)
+      Microsoft.Net.Http (>= 2.2.22)
+      Newtonsoft.Json (>= 6.0.4)
+    Microsoft.WindowsAzure.Management (4.1.1)
+      Microsoft.Azure.Common (>= 2.0.4 < 3.0)
+    Microsoft.WindowsAzure.Management.Compute (13.0)
+      Microsoft.Azure.Common (>= 2.0.4 < 3.0)
+    Microsoft.WindowsAzure.Management.Libraries (2.0)
+      Microsoft.WindowsAzure.Common (>= 1.3 < 2.0)
+      Microsoft.WindowsAzure.Management (>= 2.0)
+      Microsoft.WindowsAzure.Management.Compute (>= 5.0)
+      Microsoft.WindowsAzure.Management.MediaServices (>= 2.0)
+      Microsoft.WindowsAzure.Management.Monitoring (>= 1.0)
+      Microsoft.WindowsAzure.Management.Network (>= 3.0)
+      Microsoft.WindowsAzure.Management.Scheduler (>= 3.0)
+      Microsoft.WindowsAzure.Management.Sql (>= 3.0)
+      Microsoft.WindowsAzure.Management.Storage (>= 3.0)
+      Microsoft.WindowsAzure.Management.WebSites (>= 3.0)
+    Microsoft.WindowsAzure.Management.MediaServices (4.1)
+      Microsoft.Azure.Common (>= 2.0.1 < 3.0)
+    Microsoft.WindowsAzure.Management.Monitoring (4.1)
+      Microsoft.Azure.Common (>= 2.0.1 < 3.0)
+    Microsoft.WindowsAzure.Management.Network (8.0)
+      Microsoft.Azure.Common (>= 2.1 < 3.0)
+    Microsoft.WindowsAzure.Management.Scheduler (6.2)
+      Microsoft.Azure.Common (>= 2.0.4 < 3.0)
+    Microsoft.WindowsAzure.Management.ServiceBus (0.19.0-preview)
+      Microsoft.Azure.Common (>= 2.0.4 < 3.0)
+    Microsoft.WindowsAzure.Management.Sql (5.2)
+      Microsoft.Azure.Common (>= 2.0.4 < 3.0)
+    Microsoft.WindowsAzure.Management.Storage (6.0.1)
+      Microsoft.Azure.Common (>= 2.0.4 < 3.0)
+    Microsoft.WindowsAzure.Management.WebSites (4.0)
+      Microsoft.WindowsAzure.Common (>= 1.3 < 2.0)
+    Mono.Cecil (0.9.6.4)
+    NETStandard.Library (1.6.1) - framework: >= net463
+      Microsoft.Win32.Primitives (>= 4.3) - framework: >= net46
+      System.AppContext (>= 4.3) - framework: >= net46
+      System.Collections.Concurrent (>= 4.3)
+      System.Console (>= 4.3) - framework: >= net46
+      System.Diagnostics.Tracing (>= 4.3)
+      System.Globalization.Calendars (>= 4.3) - framework: >= net46
+      System.IO.Compression (>= 4.3)
+      System.IO.Compression.ZipFile (>= 4.3) - framework: >= net46
+      System.IO.FileSystem (>= 4.3) - framework: >= net46
+      System.IO.FileSystem.Primitives (>= 4.3) - framework: >= net46
+      System.Net.Http (>= 4.3)
+      System.Net.Sockets (>= 4.3) - framework: >= net46
+      System.Runtime.Handles (>= 4.3) - framework: >= net46
+      System.Runtime.InteropServices (>= 4.3)
+      System.Runtime.InteropServices.RuntimeInformation (>= 4.3)
+      System.Runtime.Numerics (>= 4.3)
+      System.Security.Cryptography.Algorithms (>= 4.3) - framework: >= net46
+      System.Security.Cryptography.Encoding (>= 4.3) - framework: >= net46
+      System.Security.Cryptography.Primitives (>= 4.3) - framework: >= net46
+      System.Security.Cryptography.X509Certificates (>= 4.3) - framework: >= net46
+      System.Threading.Timer (>= 4.3) - framework: >= net451
+    Newtonsoft.Json (9.0.1)
+    System.AppContext (4.3) - framework: >= net463
+    System.Collections.Concurrent (4.3) - framework: >= net463
+    System.Collections.Immutable (1.2)
+    System.Console (4.3) - framework: >= net463
+    System.Diagnostics.Tracing (4.3) - framework: >= net463
+    System.Globalization.Calendars (4.3) - framework: >= net463
+    System.IO (4.3) - framework: >= net463
+    System.IO.Compression (4.3) - framework: >= net463
+    System.IO.Compression.ZipFile (4.3) - framework: >= net463
+    System.IO.FileSystem (4.3) - framework: >= net463
+      System.IO.FileSystem.Primitives (>= 4.3) - framework: >= net46
+    System.IO.FileSystem.Primitives (4.3)
+    System.Net.Http (4.3.1) - framework: >= net463
+      System.Security.Cryptography.X509Certificates (>= 4.3) - framework: >= net46
+    System.Net.Sockets (4.3) - framework: >= net463
+    System.Reflection.Metadata (1.3)
+      System.Collections.Immutable (>= 1.2)
+    System.Runtime (4.3)
+    System.Runtime.Handles (4.3) - framework: >= net463
+    System.Runtime.InteropServices (4.3) - framework: >= net463
+      System.Runtime (>= 4.3) - framework: >= net462
+    System.Runtime.InteropServices.RuntimeInformation (4.3) - framework: >= net463
+    System.Runtime.Numerics (4.3) - framework: >= net463
+    System.Security.Cryptography.Algorithms (4.3)
+      System.IO (>= 4.3) - framework: >= net463
+      System.Runtime (>= 4.3) - framework: >= net463
+      System.Security.Cryptography.Encoding (>= 4.3) - framework: >= net463
+      System.Security.Cryptography.Primitives (>= 4.3) - framework: net46, net461, >= net463
+    System.Security.Cryptography.Encoding (4.3)
+    System.Security.Cryptography.Primitives (4.3)
+    System.Security.Cryptography.X509Certificates (4.3)
+      System.Security.Cryptography.Algorithms (>= 4.3) - framework: >= net46
+      System.Security.Cryptography.Encoding (>= 4.3) - framework: >= net46
+    System.Spatial (5.7)
+    System.Threading.Timer (4.3) - framework: >= net463
+    System.ValueTuple (4.3) - framework: >= net463
+    System.Xml.XDocument (4.3) - framework: >= net463
+    Vagabond (0.13.1)
+      FsPickler (>= 2.1 < 2.2)
+      Mono.Cecil (>= 0.9.6.3 < 0.9.7)
+    WindowsAzure.ServiceBus (3.3.2)
+    WindowsAzure.Storage (7.1.2)
+      Microsoft.Azure.KeyVault.Core (>= 1.0)
+      Microsoft.Data.OData (>= 5.6.4)
+      Microsoft.Data.Services.Client (>= 5.6.4)
+      Newtonsoft.Json (>= 6.0.8)
