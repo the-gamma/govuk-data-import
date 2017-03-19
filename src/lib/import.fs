@@ -20,12 +20,13 @@ type InsertContext =
     { Nested = new Dictionary<_, _>() 
       Inserted = new Dictionary<_, _>() }
 
-let insertRecords prefix (typ:System.Type) (records:seq<obj>) =
+let insertRecords prefix errors (typ:System.Type) (records:seq<obj>) =
+  let tempName = "blob" + Guid.NewGuid().ToString("N")
   let tableName = prefix + "-" + tableName typ.Name
-  let blob = writeRecordsToBlob "temp" (tableName + ".txt") typ records
+  let blob = writeRecordsToBlob "temp" (tempName + ".txt") typ records
   let insert = 
-    ( sprintf "BULK INSERT [%s] FROM '%s/temp/%s.txt' " tableName Config.container tableName ) +
-    ( sprintf "WITH (DATA_SOURCE = 'TheGammaStorage', FIELDTERMINATOR = ',', ROWTERMINATOR = '0x0a', TABLOCK)" )
+    ( sprintf "BULK INSERT [%s] FROM '%s/temp/%s.txt' " tableName Config.container tempName ) +
+    ( sprintf "WITH (DATA_SOURCE = 'TheGammaStorage', FIELDTERMINATOR = ',', ROWTERMINATOR = '0x0a', TABLOCK, MAXERRORS=%d)" errors)
   executeCommand insert
   blob.Delete()
 
@@ -62,14 +63,17 @@ let insertNestedRecords prefix ctx =
     let toInsert = values |> Seq.choose (fun (KeyValue(id, value)) -> 
       if inserted.Contains id then None else Some(id, value)) |> Array.ofSeq
     if toInsert.Length > 0 then
-      insertRecords prefix typ (Seq.map snd toInsert)
+      // This can fail with PRIMARY KEY violation, so we ignore that silently
+      insertRecords prefix toInsert.Length typ (Seq.map snd toInsert)
       for id, _ in toInsert do ctx.Inserted.[typName].Add(id) |> ignore
   ctx
 
 let insertRecordsWithNested ctx prefix (records:seq<'T>) =
-  let boxedRecords = Seq.map box records
-  insertRecords prefix (typeof<'T>) boxedRecords
-  records 
-  |> Seq.fold (fun ctx recd -> collectNested ctx (typeof<'T>) recd) ctx 
-  |> insertNestedRecords prefix
-        
+  if not (Seq.isEmpty records) then
+    let boxedRecords = Seq.map box records
+    // This should not fail, so set max errors to zero 
+    insertRecords prefix 0 (typeof<'T>) boxedRecords
+    records 
+    |> Seq.fold (fun ctx recd -> collectNested ctx (typeof<'T>) recd) ctx 
+    |> insertNestedRecords prefix
+  else ctx        

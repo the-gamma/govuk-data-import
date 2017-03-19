@@ -177,7 +177,11 @@ let storeMeasurements years =
 
         for station in getStations year do
           if not (storedStations.Contains(station.Code)) then
-            let measurements = readMeasurements pollutants year station |> averageDailyMeasurements
+            let! measurements = local {
+              try return readMeasurements pollutants year station |> averageDailyMeasurements
+              with e -> 
+                do! Cloud.Logf "(%d) Failed to read measurements for %s:\n  %A" year station.Name e
+                return [||] }
             do! Cloud.Logf "(%d) Read %d records for %s" year measurements.Length station.Name
             ctx <- Import.insertRecordsWithNested ctx "defra-airquality" measurements
             storedStations.Add(station.Code) |> ignore
@@ -218,7 +222,7 @@ for y in [1973 .. 2017] do
 Database.cleanupStorage<Measurement> "defra-airquality"
 Database.initializeStorage<Measurement> "defra-airquality"
 
-let p2 = storeMeasurements [1999] |> cluster.CreateProcess
+let p2 = storeMeasurements [1973 .. 2017] |> cluster.CreateProcess
 p2.Status
 p2.Result
 p2.ShowInfo()
@@ -229,3 +233,8 @@ Cloud.printLogs p2
 "SELECT Count(*) FROM [defra-airquality-measurement]" |> Database.executeScalarCommand
 "SELECT Count(*) FROM [defra-airquality-pollutant]" |> Database.executeScalarCommand
 "SELECT Count(*) FROM [defra-airquality-station]" |> Database.executeScalarCommand
+
+// Check progress and see which years have completed already...
+for y in [1973 .. 2017] do
+  let blob = Storage.getBlob "defra-airquality" (string y + ".allstored") 
+  printfn "%d: %A" y (blob.Exists())

@@ -39,6 +39,6 @@ let retryOnTimeout initSleep initRetries f = local {
       | TimeoutException ->
           do! Cloud.Logf "Timeout exception - too many attempts - terminating"
           return raise (TimeoutException("Timeout exception - too many attempts"))
-      | _ -> raise e 
+      | _ -> raise (new Exception("Failed when retrying", e))
   return result.Value }
 
