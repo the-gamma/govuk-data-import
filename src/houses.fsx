@@ -10,7 +10,6 @@ open System.Data
 open System.Data.SqlClient
 
 open MBrace.Core
-open MBrace.Flow
 open FSharp.Data
 open Microsoft.WindowsAzure.Storage
 

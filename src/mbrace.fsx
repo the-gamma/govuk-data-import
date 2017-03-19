@@ -21,7 +21,7 @@ module Config =
 
     // You can download your publication settings file at 
     //     https://manage.windowsazure.com/publishsettings
-    let pubSettingsFile = __SOURCE_DIRECTORY__ + "/../config/azure.publishsettings"
+    let pubSettingsFile = __SOURCE_DIRECTORY__ + "/config/azure.publishsettings"
 
     // If your publication settings defines more than one subscription,
     // you will need to specify which one you will be using here.

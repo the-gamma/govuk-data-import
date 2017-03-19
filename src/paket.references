@@ -1,0 +1,7 @@
+﻿FSharp.Data
+FSharp.Azure.StorageTypeProvider
+Microsoft.Azure.Common 
+Microsoft.WindowsAzure.Common
+Microsoft.WindowsAzure.Management
+MBrace.Azure
+MBrace.Azure.Management

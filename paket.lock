@@ -6,8 +6,11 @@ NUGET
       FSharp.Core (>= 4.0.1.7-alpha) - framework: >= net463
       NETStandard.Library (>= 1.6) - framework: >= net463
       System.Xml.XDocument (>= 4.0.11) - framework: >= net463
+    FSharp.Azure.StorageTypeProvider (1.7)
+      WindowsAzure.Storage (>= 6.0)
     FSharp.Core (4.1.0.2) - framework: >= net463
       System.ValueTuple (>= 4.3)
+    FSharp.Data (2.3.2)
     FsPickler (2.1)
     FsPickler.Json (2.1)
       FsPickler (2.1)
