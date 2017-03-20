@@ -39,6 +39,7 @@ let rec scriptTable (sb:StringBuilder) prefix typ =
             let idTyp = 
               if idProp.PropertyType = typeof<int> then "int"
               elif idProp.PropertyType = typeof<Guid> then "uniqueidentifier"
+              elif idProp.PropertyType = typeof<string> then "nvarchar(1000)"
               else failwith "Unsupported ID type"
             fld.Name + "ID", idTyp
           else failwithf "Unsupported type: %s" fld.PropertyType.Name

@@ -25,9 +25,8 @@ type Pollutant =
     Notation : string }
 
 type Station = 
-  { ID : Guid
+  { ID : string
     Name : string
-    Code : string 
     Latitude : float // NS
     Longitude : float } // WE
 
@@ -88,7 +87,7 @@ let getStations year =
         match entry.Polygon.Split(' ') |> List.ofArray with 
         | lat::log::_ -> (float lat, float log) 
         | _ -> failwith "Could not parse coordinates"
-      { Station.ID = Guid.NewGuid(); Longitude = log; Latitude = lat; Code = code; Name = name } ]
+      { Station.ID = code; Longitude = log; Latitude = lat; Name = name } ]
 
 let downloadMesurementFiles years = 
   [ for year in years -> Cloud.retryOnTimeout (60*1000) 6 (fun resetTimeouts -> local {
@@ -101,10 +100,10 @@ let downloadMesurementFiles years =
         resetTimeouts ()
         for station in stations do
           let container = Storage.getContainerReference ()
-          let blobName = sprintf "defra-airquality/%d/%s.xml" year (station.Code.ToLower())
+          let blobName = sprintf "defra-airquality/%d/%s.xml" year (station.ID.ToLower())
           let blob = container.GetBlockBlobReference(blobName)
           if not (blob.Exists()) then 
-            let dataUrl = sprintf "http://uk-air.defra.gov.uk/data/atom-dls/observations/auto/GB_FixedObservations_%d_%s.xml" year station.Code
+            let dataUrl = sprintf "http://uk-air.defra.gov.uk/data/atom-dls/observations/auto/GB_FixedObservations_%d_%s.xml" year station.ID
             do! Cloud.Logf "(%d) downloading measurements for %s" year station.Name
             blob.UploadFromStream(Http.RequestStream(dataUrl,timeout=Config.requestTimeout).ResponseStream)
             do! Cloud.Logf "(%d) stored measurements for %s" year station.Name
@@ -120,8 +119,8 @@ let downloadMesurementFiles years =
 // Scripts to read downloaded XML files from storage and write them to SQL database
 // ------------------------------------------------------------------------------------------------
 
-let readMeasurements (pollutants:IDictionary<_, _>) year station = 
-  let blobName = sprintf "%d/%s.xml" year (station.Code.ToLower())
+let readMeasurements (pollutants:IDictionary<_, _>) year (station:Station) = 
+  let blobName = sprintf "%d/%s.xml" year (station.ID.ToLower())
   let data = Data.Parse(Storage.downloadBlobAsText "defra-airquality" blobName)
 
   // Collect observations that have data & measure known property
@@ -176,7 +175,7 @@ let storeMeasurements years =
         do! Cloud.Logf "(%d) Already stored %d stations" year storedStations.Count
 
         for station in getStations year do
-          if not (storedStations.Contains(station.Code)) then
+          if not (storedStations.Contains(station.ID)) then
             let! measurements = local {
               try return readMeasurements pollutants year station |> averageDailyMeasurements
               with e -> 
@@ -184,7 +183,7 @@ let storeMeasurements years =
                 return [||] }
             do! Cloud.Logf "(%d) Read %d records for %s" year measurements.Length station.Name
             ctx <- Import.insertRecordsWithNested ctx "defra-airquality" measurements
-            storedStations.Add(station.Code) |> ignore
+            storedStations.Add(station.ID) |> ignore
             storedBlob.UploadText(storedStations |> String.concat "\n")
             do! Cloud.Logf "(%d) Inserted %d records for %s" year measurements.Length station.Name
             resetTimeouts ()
@@ -222,7 +221,7 @@ for y in [1973 .. 2017] do
 Database.cleanupStorage<Measurement> "defra-airquality"
 Database.initializeStorage<Measurement> "defra-airquality"
 
-let p2 = storeMeasurements [1973 .. 2017] |> cluster.CreateProcess
+let p2 = storeMeasurements [2007 .. 2017] |> cluster.CreateProcess
 p2.Status
 p2.Result
 p2.ShowInfo()

@@ -55,6 +55,7 @@ let insertNestedRecords prefix ctx =
       let parse = 
         if idProp.PropertyType = typeof<int> then (fun (rdr:SqlDataReader) -> rdr.GetInt32(0).ToString())
         elif idProp.PropertyType = typeof<Guid> then (fun (rdr:SqlDataReader) -> rdr.GetGuid(0).ToString())
+        elif idProp.PropertyType = typeof<string> then (fun (rdr:SqlDataReader) -> rdr.GetString(0))
         else failwith "Unsupported type of ID"
       let ids = executeReader cmd parse
       ctx.Inserted.Add(typName, HashSet(ids))
