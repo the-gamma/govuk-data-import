@@ -30,11 +30,28 @@ type Station =
     Latitude : float // NS
     Longitude : float } // WE
 
-type Measurement = 
+type RawMeasurement = 
   { ID : Guid
-    Time : DateTimeOffset
     Pollutant : Pollutant
     Station : Station
+    Time : DateTimeOffset
+    Value : float }
+
+type DailyMeasurement = 
+  { ID : Guid
+    Pollutant : Pollutant
+    Station : Station
+    Year : int
+    Month : int
+    Day : int
+    Value : float }
+
+type MonthlyMeasurement = 
+  { ID : Guid
+    Pollutant : Pollutant
+    Station : Station
+    Year : int
+    Month : int
     Value : float }
 
 
@@ -75,25 +92,31 @@ let getPollutants () =
 
 // Download raw XML files and save them in Azre blobs for further processing
 
-let getStations year = 
-  let yearUrl = sprintf "https://uk-air.defra.gov.uk/data/atom-dls/auto/%d/atom.en.xml" year
+let getStations yearNumber = 
+  let yearUrl = sprintf "https://uk-air.defra.gov.uk/data/atom-dls/auto/%d/atom.en.xml" yearNumber
   let yearData = Http.RequestString(yearUrl, timeout=Config.requestTimeout)
-  Storage.writeFileToBlob yearData "defra-airquality" (string year + ".xml")
+  Storage.writeFileToBlob yearData "defra-airquality" (string yearNumber + ".xml")
   let year = Year.Parse(yearData)
-  [ for entry in year.Entries ->
-      let name = entry.Summary.Value |> removePrefix "GB Fixed Observations for " |> removeAfter " ("
-      let code = entry.Summary.Value |> removeBefore " (" |> removeAfter ") "
-      let lat, log = 
-        match entry.Polygon.Split(' ') |> List.ofArray with 
-        | lat::log::_ -> (float lat, float log) 
-        | _ -> failwith "Could not parse coordinates"
-      { Station.ID = code; Longitude = log; Latitude = lat; Name = name } ]
+  let stations = 
+    [ for entry in year.Entries ->
+        try
+          let name = entry.Summary.Value |> removePrefix "GB Fixed Observations for " |> removeAfter " ("
+          let code = entry.Summary.Value |> removeBefore " (" |> removeAfter ") "
+          let lat, log = 
+            match entry.Polygon.Split(' ') |> List.ofArray with 
+            | lat::log::_ -> (float lat, float log) 
+            | _ -> failwith "Could not parse coordinates"
+          Some { Station.ID = code; Longitude = log; Latitude = lat; Name = name }
+        with _ -> None  ]
+  let failures = stations |> Seq.filter Option.isNone |> Seq.length
+  if failures > 5 then failwithf "Failed to parse stations: Too many errors for year %d" yearNumber
+  else List.choose id stations
 
 let downloadMesurementFiles years = 
   [ for year in years -> Cloud.retryOnTimeout (60*1000) 6 (fun resetTimeouts -> local {
       do! Cloud.Logf "(%d) starting...." year 
-      if (Storage.getBlob "defra-airquality" (string year + ".completed")).Exists() then
-        do! Cloud.Logf "(%d) skipping! '%d.completed' exists!" year year
+      if (Storage.getBlob "defra-airquality" (string year + ".downloaded")).Exists() then
+        do! Cloud.Logf "(%d) skipping! '%d.downloaded' exists!" year year
       else
         do! Cloud.Logf "(%d) getting stations..." year 
         let stations = getStations year
@@ -129,7 +152,7 @@ let readMeasurements (pollutants:IDictionary<_, _>) year (station:Station) =
     |> Seq.choose (fun mem -> mem.OmObservation) 
     |> Seq.filter (fun obs -> obs.ObservedProperty.Href.IsSome)
         
-  let rows = ResizeArray<Measurement>()
+  let rows = ResizeArray<RawMeasurement>()
   for obs in observations do
     try
       // Ensure the XML file has StartDate & Value in the usual places
@@ -145,7 +168,7 @@ let readMeasurements (pollutants:IDictionary<_, _>) year (station:Station) =
 
       for block in vals.Split([| block |], StringSplitOptions.RemoveEmptyEntries) do
         let flds = block.Split([| tok |], StringSplitOptions.None) 
-        { Measurement.ID = Guid.NewGuid() 
+        { RawMeasurement.ID = Guid.NewGuid() 
           Time = DateTimeOffset.Parse(flds.[0])
           Pollutant = pollutant
           Station = station
@@ -153,45 +176,47 @@ let readMeasurements (pollutants:IDictionary<_, _>) year (station:Station) =
     with e -> failwithf "Failed to process observation:\n%A\n\n%A" obs e
   rows.ToArray()    
 
-let averageDailyMeasurements measurements = 
+let averageMeasurements f g (measurements:seq<RawMeasurement>) = 
   measurements 
-  |> Seq.groupBy (fun m -> m.Pollutant.ID, m.Time.Date)
-  |> Seq.map (fun (_, group) ->   
-      { Seq.head group with Value = group |> Seq.averageBy (fun m -> m.Value) })
+  |> Seq.groupBy (fun m -> m.Pollutant.ID, f m.Time)
+  |> Seq.map (fun ((_, k), group) ->   
+      let first = Seq.head group
+      g first.Station first.Pollutant k (group |> Seq.averageBy (fun m -> m.Value)))
   |> Array.ofSeq
 
+let averageMonthly = 
+  averageMeasurements (fun m -> m.Year, m.Month) (fun s p (y, m) v -> 
+    { MonthlyMeasurement.ID = Guid.NewGuid(); Pollutant = p; Station = s; Year = y; Month = m; Value = v })
+
+let averageDaily = 
+  averageMeasurements (fun m -> m.Year, m.Month, m.Day) (fun s p (y, m, d) v -> 
+    { DailyMeasurement.ID = Guid.NewGuid(); Pollutant = p; Station = s; Year = y; Month = m; Day = d; Value = v })
+    
 let storeMeasurements years = 
-  [ for year in years -> Cloud.retryOnTimeout (60*1000) 6 (fun resetTimeouts -> local {
+  [ for year in years -> Cloud.retryOnTimeout (60*1000) 0 (fun resetTimeouts -> local {
       let mutable ctx = Import.InsertContext.Create()
       let pollutants = getPollutants ()
-      let allDone = Storage.getBlob "defra-airquality" (string year + ".allstored")
-      if allDone.Exists() then
-        do! Cloud.Logf "(%d) All data stored already. Skipping." year
+      let inserted = Storage.getBlob "defra-airquality" (string year + ".inserted")
+      if inserted.Exists() then
+        do! Cloud.Logf "(%d) All data inserted already. Skipping." year
       else
-        let storedBlob = Storage.getBlob "defra-airquality" (string year + ".stored")
-        let storedStations = 
-          if not (storedBlob.Exists()) then HashSet()
-          else storedBlob.DownloadText().Split([|'\n'|], StringSplitOptions.RemoveEmptyEntries) |> HashSet  
-        do! Cloud.Logf "(%d) Already stored %d stations" year storedStations.Count
-
+        let dailyData = ResizeArray<_>()
+        let monthlyData = ResizeArray<_>()
         for station in getStations year do
-          if not (storedStations.Contains(station.ID)) then
-            let! measurements = local {
-              try return readMeasurements pollutants year station |> averageDailyMeasurements
-              with e -> 
-                do! Cloud.Logf "(%d) Failed to read measurements for %s:\n  %A" year station.Name e
-                return [||] }
-            do! Cloud.Logf "(%d) Read %d records for %s" year measurements.Length station.Name
-            ctx <- Import.insertRecordsWithNested ctx "defra-airquality" measurements
-            storedStations.Add(station.ID) |> ignore
-            storedBlob.UploadText(storedStations |> String.concat "\n")
-            do! Cloud.Logf "(%d) Inserted %d records for %s" year measurements.Length station.Name
-            resetTimeouts ()
-          else
-            do! Cloud.Logf "(%d) Skipping %s (already stored)" year station.Name
+          let! raw = local {
+            try return readMeasurements pollutants year station 
+            with e -> 
+              do! Cloud.Logf "(%d) Failed to read measurements for %s:\n  %A" year station.Name e
+              return [||] }
+          do! Cloud.Logf "(%d) Read %d records for %s" year raw.Length station.Name
+          dailyData.AddRange(averageDaily raw)
+          monthlyData.AddRange(averageMonthly raw)
 
-        Storage.writeFileToBlob "" "defra-airquality" (string year + ".allstored")
-        do! Cloud.Logf "(%d) Success. All data inserted!" year  }) ]
+        let ctx = Import.insertRecordsWithNested ctx "defra-airquality" dailyData 
+        let ctx = Import.insertRecordsWithNested ctx "defra-airquality" monthlyData
+        Storage.writeFileToBlob "" "defra-airquality" (string year + ".inserted")
+        do! Cloud.Logf "(%d) Success. Inserted %d daily points and %d monthly points" year dailyData.Count monthlyData.Count
+        resetTimeouts () }) ]
   |> Cloud.Parallel 
   |> Cloud.Ignore
 
@@ -214,14 +239,14 @@ Cloud.printLogs p1
 
 // Check progress and see which years have completed already...
 for y in [1973 .. 2017] do
-  let blob = Storage.getBlob "defra-airquality" (string y + ".completed") 
+  let blob = Storage.getBlob "defra-airquality" (string y + ".downloaded") 
   printfn "%d: %A" y (blob.Exists())
 
 // Read downloaded XML files from storage and write them to SQL database
-Database.cleanupStorage<Measurement> "defra-airquality"
-Database.initializeStorage<Measurement> "defra-airquality"
+Database.cleanupStorage "defra-airquality" [typeof<DailyMeasurement>; typeof<MonthlyMeasurement>]
+Database.initializeStorage "defra-airquality" [typeof<DailyMeasurement>; typeof<MonthlyMeasurement>]
 
-let p2 = storeMeasurements [2007 .. 2017] |> cluster.CreateProcess
+let p2 = storeMeasurements [2017 .. 2017] |> cluster.CreateProcess
 p2.Status
 p2.Result
 p2.ShowInfo()
@@ -229,11 +254,31 @@ p2.ShowInfo()
 Cloud.printLogs p2
 
 // Count how many records have we inserted already...
-"SELECT Count(*) FROM [defra-airquality-measurement]" |> Database.executeScalarCommand
+"SELECT Count(*) FROM [defra-airquality-daily-measurement]" |> Database.executeScalarCommand
+"SELECT Count(*) FROM [defra-airquality-monthly-measurement]" |> Database.executeScalarCommand
 "SELECT Count(*) FROM [defra-airquality-pollutant]" |> Database.executeScalarCommand
 "SELECT Count(*) FROM [defra-airquality-station]" |> Database.executeScalarCommand
 
 // Check progress and see which years have completed already...
 for y in [1973 .. 2017] do
-  let blob = Storage.getBlob "defra-airquality" (string y + ".allstored") 
+  let blob = Storage.getBlob "defra-airquality" (string y + ".inserted") 
   printfn "%d: %A" y (blob.Exists())
+
+// Create some indices over the table to make filtering by time, station & pollutant faster
+"CREATE NONCLUSTERED INDEX IX_YearMonthDay ON [defra-airquality-daily-measurement] (Year,Month,Day)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_StationID ON [defra-airquality-daily-measurement] (StationID)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_PollutantID ON [defra-airquality-daily-measurement] (PollutantID)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+
+"CREATE NONCLUSTERED INDEX IX_YearMonth ON [defra-airquality-monthly-measurement] (Year,Month)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_StationID ON [defra-airquality-monthly-measurement] (StationID)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_PollutantID ON [defra-airquality-monthly-measurement] (PollutantID)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+
+"DROP INDEX IX_measurement_??? ON [defra-airquality-daily-measurement]" 
+|> Database.executeCommand
+

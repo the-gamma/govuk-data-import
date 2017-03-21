@@ -27,7 +27,7 @@ let insertRecords prefix errors (typ:System.Type) (records:seq<obj>) =
   let insert = 
     ( sprintf "BULK INSERT [%s] FROM '%s/temp/%s.txt' " tableName Config.container tempName ) +
     ( sprintf "WITH (DATA_SOURCE = 'TheGammaStorage', FIELDTERMINATOR = ',', ROWTERMINATOR = '0x0a', TABLOCK, MAXERRORS=%d)" errors)
-  executeCommand insert
+  executeCommandWithTimeout (60 * 5) insert
   blob.Delete()
 
 let addNestedValue ctx (typ:System.Type) id value = 
