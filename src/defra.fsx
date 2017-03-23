@@ -142,6 +142,9 @@ let downloadMesurementFiles years =
 // Scripts to read downloaded XML files from storage and write them to SQL database
 // ------------------------------------------------------------------------------------------------
 
+// Looks like Defra uses -99.0 for missing values. How nice!
+let isValidValue n = n >= 0.0
+
 let readMeasurements (pollutants:IDictionary<_, _>) year (station:Station) = 
   let blobName = sprintf "%d/%s.xml" year (station.ID.ToLower())
   let data = Data.Parse(Storage.downloadBlobAsText "defra-airquality" blobName)
@@ -168,11 +171,10 @@ let readMeasurements (pollutants:IDictionary<_, _>) year (station:Station) =
 
       for block in vals.Split([| block |], StringSplitOptions.RemoveEmptyEntries) do
         let flds = block.Split([| tok |], StringSplitOptions.None) 
-        { RawMeasurement.ID = Guid.NewGuid() 
-          Time = DateTimeOffset.Parse(flds.[0])
-          Pollutant = pollutant
-          Station = station
-          Value = float flds.[4] } |> rows.Add
+        let value = float flds.[4]
+        if isValidValue value then
+          { RawMeasurement.ID = Guid.NewGuid(); Time = DateTimeOffset.Parse(flds.[0])
+            Pollutant = pollutant; Station = station; Value = value } |> rows.Add
     with e -> failwithf "Failed to process observation:\n%A\n\n%A" obs e
   rows.ToArray()    
 
@@ -246,7 +248,7 @@ for y in [1973 .. 2017] do
 Database.cleanupStorage "defra-airquality" [typeof<DailyMeasurement>; typeof<MonthlyMeasurement>]
 Database.initializeStorage "defra-airquality" [typeof<DailyMeasurement>; typeof<MonthlyMeasurement>]
 
-let p2 = storeMeasurements [2017 .. 2017] |> cluster.CreateProcess
+let p2 = storeMeasurements [1973 .. 2017] |> cluster.CreateProcess
 p2.Status
 p2.Result
 p2.ShowInfo()
@@ -279,6 +281,6 @@ for y in [1973 .. 2017] do
 "CREATE NONCLUSTERED INDEX IX_PollutantID ON [defra-airquality-monthly-measurement] (PollutantID)" 
 |> Database.executeCommandWithTimeout (60 * 15)
 
+// This is how to drop some index in case we do not actually want it!
 "DROP INDEX IX_measurement_??? ON [defra-airquality-daily-measurement]" 
 |> Database.executeCommand
-
