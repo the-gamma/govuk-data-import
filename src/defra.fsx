@@ -103,7 +103,7 @@ let getStations yearNumber =
           let name = entry.Summary.Value |> removePrefix "GB Fixed Observations for " |> removeAfter " ("
           let code = entry.Summary.Value |> removeBefore " (" |> removeAfter ") "
           let lat, log = 
-            match entry.Polygon.Split(' ') |> List.ofArray with 
+            match (defaultArg entry.Polygon "").Split(' ') |> List.ofArray with 
             | lat::log::_ -> (float lat, float log) 
             | _ -> failwith "Could not parse coordinates"
           Some { Station.ID = code; Longitude = log; Latitude = lat; Name = name }
