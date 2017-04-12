@@ -2,6 +2,7 @@ framework: >= net45
 redirects: on
 source https://www.nuget.org/api/v2
 
+nuget DotSpatial.Projections
 nuget FSharp.Azure.StorageTypeProvider
 nuget FSharp.Data
 nuget Microsoft.Azure.Common 2.1

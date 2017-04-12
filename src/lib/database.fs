@@ -87,12 +87,14 @@ let executeScalarCommand sql =
   use cmd = new SqlCommand(sql, conn)
   cmd.ExecuteScalar()
 
-let initializeStorage prefix types = 
-  let sql = scriptTables prefix types
-  executeCommand sql
+let initializeExternalBlob () = 
   executeCommand 
     ( "CREATE EXTERNAL DATA SOURCE TheGammaStorage "  +
       sprintf "WITH (TYPE = BLOB_STORAGE, LOCATION = '%s')" storageAccount)
+
+let initializeStorage prefix types = 
+  let sql = scriptTables prefix types
+  executeCommand sql
 
 let cleanupStorage prefix types =
   try executeCommand "DROP EXTERNAL DATA SOURCE TheGammaStorage" 

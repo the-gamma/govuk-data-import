@@ -52,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="config/keys.fs" />
+    <Compile Include="lib/common.fs" />
     <Compile Include="lib/config.fs" />
     <Compile Include="lib/database.fs" />
     <Compile Include="lib/storage.fs" />
@@ -60,6 +61,7 @@
     <None Include="mbrace.fsx" />
     <None Include="setup.fsx" />
     <None Include="defra.fsx" />
+    <None Include="traffic.fsx" />
     <None Include="houses.fsx" />
     <None Include="paket.references" />
   </ItemGroup>

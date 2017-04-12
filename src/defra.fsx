@@ -196,7 +196,7 @@ let averageDaily =
     
 let storeMeasurements years = 
   [ for year in years -> Cloud.retryOnTimeout (60*1000) 0 (fun resetTimeouts -> local {
-      let mutable ctx = Import.InsertContext.Create()
+      let ctx = Import.InsertContext.Create()
       let pollutants = getPollutants ()
       let inserted = Storage.getBlob "defra-airquality" (string year + ".inserted")
       if inserted.Exists() then
@@ -247,6 +247,7 @@ for y in [1973 .. 2017] do
 // Read downloaded XML files from storage and write them to SQL database
 Database.cleanupStorage "defra-airquality" [typeof<DailyMeasurement>; typeof<MonthlyMeasurement>]
 Database.initializeStorage "defra-airquality" [typeof<DailyMeasurement>; typeof<MonthlyMeasurement>]
+Database.initializeExternalBlob ()
 
 let p2 = storeMeasurements [1973 .. 2017] |> cluster.CreateProcess
 p2.Status
@@ -269,6 +270,14 @@ for y in [1973 .. 2017] do
 // Create some indices over the table to make filtering by time, station & pollutant faster
 "CREATE NONCLUSTERED INDEX IX_YearMonthDay ON [defra-airquality-daily-measurement] (Year,Month,Day)" 
 |> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_StationIDYear ON [defra-airquality-daily-measurement] (StationID,Year)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_PollutantIDYear ON [defra-airquality-daily-measurement] (PollutantID,Year)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_Year ON [defra-airquality-daily-measurement] (Year)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_Month ON [defra-airquality-daily-measurement] (Month)" 
+|> Database.executeCommandWithTimeout (60 * 15)
 "CREATE NONCLUSTERED INDEX IX_StationID ON [defra-airquality-daily-measurement] (StationID)" 
 |> Database.executeCommandWithTimeout (60 * 15)
 "CREATE NONCLUSTERED INDEX IX_PollutantID ON [defra-airquality-daily-measurement] (PollutantID)" 
@@ -282,5 +291,5 @@ for y in [1973 .. 2017] do
 |> Database.executeCommandWithTimeout (60 * 15)
 
 // This is how to drop some index in case we do not actually want it!
-"DROP INDEX IX_measurement_??? ON [defra-airquality-daily-measurement]" 
+"DROP INDEX IX_YearMonthDay ON [defra-airquality-daily-measurement]" 
 |> Database.executeCommand

@@ -40,6 +40,12 @@ let writeFileToBlob data dir file =
   if not (blob.Exists()) then 
     blob.UploadText(data)
 
+let writeStreamToBlob stream dir file = 
+  let container = getContainerReference ()
+  let blob = container.GetDirectoryReference(dir).GetBlockBlobReference(file)
+  if not (blob.Exists()) then 
+    blob.UploadFromStream(stream)
+
 let formatRecord typ = 
   let fields = 
     FSharpType.GetRecordFields(typ)
