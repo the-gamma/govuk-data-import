@@ -24,17 +24,25 @@ open DotSpatial.Projections
 // Domain model - also defines the structure of the database tables
 // ------------------------------------------------------------------------------------------------
 
+type Region = 
+  { ID : int 
+    Region : string }
+
 type Location = 
+  { ID : int 
+    Location : string }
+
+type Road =  
   { ID : int
-    Region : string 
     Latitude : float // NS
     Longitude : float // WE
-    Name : string
     Road : string }
 
 type DailyMeasurement =
   { ID : int
     Location : Location
+    Region : Region
+    Road : Road
     Day : int
     Month : int
     Year : int
@@ -79,6 +87,18 @@ let insertMeasurements () = cloud {
   let csv = Traffic.Load(blob.OpenRead())
 
   do! Cloud.Logf "Reading and parsing measurements"  
+
+  let regions = System.Collections.Generic.Dictionary<_, _>()
+  let locations = System.Collections.Generic.Dictionary<_, _>()
+  let getLocation loc = 
+    if not (locations.ContainsKey(loc)) then 
+      locations.Add(loc, { Location.ID = locations.Count; Location = loc })    
+    locations.[loc]
+  let getRegion reg = 
+    if not (regions.ContainsKey(reg)) then 
+      regions.Add(reg, { Region.ID = regions.Count; Region = reg })    
+    regions.[reg]
+
   let measurements = 
     csv.Rows
     |> Seq.chunkWhile (fun r1 r2 -> r1.CP = r2.CP)
@@ -86,8 +106,13 @@ let insertMeasurements () = cloud {
       let r = chunk.[0]
       match r.``S Ref E``, r.``S Ref N``, r.``Region Name (GO)``, r.``ONS LA Name``, r.Road with
       | Some re, Some rn, Some reg, Some name, Some road ->   
+          let road = 
+            match defaultArg r.``A-Junction`` "", defaultArg r.``B-Junction`` "" with
+            | "", "" -> road
+            | (j, "") | ("", j) -> sprintf "%s (%s)" road j
+            | aj, bj -> sprintf "%s (%s - %s)" road aj bj
           let long, lat = geoConv (float re) (float rn)
-          let loc = { Location.ID = idx; Region = reg; Name = name; Road = road; Latitude = lat; Longitude = long }
+          let loc = getRegion reg, getLocation name, { Road.ID = idx; Road = road; Latitude = lat; Longitude = long }
           chunk 
           |> Seq.filter (fun r -> r.DCount.IsSome)
           |> Seq.groupBy (fun r -> r.DCount.Value)
@@ -97,8 +122,9 @@ let insertMeasurements () = cloud {
     |> Array.ofSeq
 
   do! Cloud.Logf "Calculating daily measurements"  
-  let daily = measurements |> Array.mapi (fun idx (loc, date, group) ->
-    { DailyMeasurement.ID = idx; Location = loc; Day = date.Day; Month = date.Month; Year = date.Year
+  let daily = measurements |> Array.mapi (fun idx ((reg, loc, rd), date, group) ->
+    { DailyMeasurement.ID = idx; Location = loc; Region = reg; Road = rd
+      Day = date.Day; Month = date.Month; Year = date.Year
       PedalCycles = group |> Seq.sumBy (fun r -> defaultArg r.PC 0)
       MotorVehicles = group |> Seq.sumBy (fun r -> defaultArg r.AMV 0) })
   
@@ -141,18 +167,17 @@ Cloud.printLogs p2
 // Count how many records have we inserted already...
 "SELECT Count(*) FROM [gb-road-traffic-counts-daily-measurement]" |> Database.executeScalarCommand
 "SELECT Count(*) FROM [gb-road-traffic-counts-location]" |> Database.executeScalarCommand
-
+"SELECT Count(*) FROM [gb-road-traffic-counts-road]" |> Database.executeScalarCommand
+"SELECT Count(*) FROM [gb-road-traffic-counts-region]" |> Database.executeScalarCommand
 
 // Create some indices over the table to make filtering by time, station & pollutant faster
 "CREATE NONCLUSTERED INDEX IX_YearMonthDay ON [gb-road-traffic-counts-daily-measurement] (Year,Month,Day)" 
 |> Database.executeCommandWithTimeout (60 * 15)
-"CREATE NONCLUSTERED INDEX IX_LocationIDYear ON [gb-road-traffic-counts-daily-measurement] (LocationID,Year)" 
-|> Database.executeCommandWithTimeout (60 * 15)
-"CREATE NONCLUSTERED INDEX IX_Year ON [gb-road-traffic-counts-daily-measurement] (Year)" 
-|> Database.executeCommandWithTimeout (60 * 15)
-"CREATE NONCLUSTERED INDEX IX_Month ON [gb-road-traffic-counts-daily-measurement] (Month)" 
-|> Database.executeCommandWithTimeout (60 * 15)
 "CREATE NONCLUSTERED INDEX IX_LocationID ON [gb-road-traffic-counts-daily-measurement] (LocationID)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_RegionID ON [gb-road-traffic-counts-daily-measurement] (RegionID)" 
+|> Database.executeCommandWithTimeout (60 * 15)
+"CREATE NONCLUSTERED INDEX IX_RoadID ON [gb-road-traffic-counts-daily-measurement] (RoadID)" 
 |> Database.executeCommandWithTimeout (60 * 15)
 
 // This is how to drop some index in case we do not actually want it!
